@@ -52,7 +52,7 @@ load-script() {
 
 is-true() {
     case "$1" in
-    true | yes | 1) return 0 ;;
+        true | yes | 1) return 0 ;;
     esac
     return 1
 }
@@ -104,6 +104,22 @@ echo-warning() {
     fi
     echo >&2 "${CYELLOW}Warning: $*${CNORMAL}"
 }
+
+printf-array() {
+    local arg r s
+    r=""
+    s=""
+    for arg in "$@"; do
+        printf -v s "%q" "$arg"
+        if [[ -z "$r" ]]; then
+            r=$s
+        else
+            r="$r $s"
+        fi
+    done
+    printf "( %s )" "$r"
+}
+
 
 info() {
     echo >&2 "info: $*"
@@ -191,6 +207,14 @@ DEFAULT_DOCKER_APPGROUP=toolbox
 DEFAULT_DOCKER_APPUSER=toolbox
 # shellcheck disable=SC2034
 DEFAULT_DOCKER_APPHOME=/mnt
+# shellcheck disable=SC2034
+DEFAULT_DOCKER_EXECARGS=("/usr/local/bin/run-shell.sh")
+# shellcheck disable=SC2034
+DEFAULT_DOCKER_RUNARGS=()
+# shellcheck disable=SC2034
+DEFAULT_DOCKER_CONTAINERARGS=("/bin/sh" "-c" "trap exit INT TERM; while true; do sleep 10000000; done")
+# shellcheck disable=SC2034
+DEFAULT_DOCKER_BUILDARGS=()
 
 # Load configuration
 # load-script "$ROOT_DIR/settings.cfg"

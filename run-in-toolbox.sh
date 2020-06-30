@@ -10,6 +10,7 @@ THIS_DIR=$( (cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P))
 # shellcheck source=scripts/init-env.sh
 . "$THIS_DIR/scripts/init-env.sh"
 
+
 print-usage() {
     echo "Usage: $1 [command] [<args>]
 
@@ -28,7 +29,7 @@ options:
     -v, --verbose              Verbose output
     --                         End of options
 
-current configuration:
+current user-defined configuration:
 
 docker.imageName = $DOCKER_IMAGENAME
 docker.containerName = $DOCKER_CONTAINERNAME
@@ -38,6 +39,10 @@ docker.appGroup = $DOCKER_APPGROUP
 docker.appUid = $DOCKER_APPUID
 docker.appGid = $DOCKER_APPGID
 docker.appHome = $DOCKER_APPHOME
+docker.execArgs = $(printf-array "${DOCKER_EXECARGS[@]}")
+docker.runArgs = $(printf-array "${DOCKER_RUNARGS[@]}")
+docker.containerArgs = $(printf-array "${DOCKER_CONTAINERARGS[@]}")
+docker.buildArgs = $(printf-array "${DOCKER_BUILDARGS[@]}")
 "
 }
 
@@ -112,14 +117,14 @@ else
 fi
 
 case "$COMMAND" in
-start | stop | exec | build) ;;
-*) fatal "$0: Unsupported command: $COMMAND" ;;
+    start | stop | exec | build) ;;
+    *) fatal "$0: Unsupported command: $COMMAND" ;;
 esac
 
 is-command-require-container() {
     case "$1" in
-    start | exec) return 0 ;;
-    *) return 1 ;;
+        start | exec) return 0 ;;
+        *) return 1 ;;
     esac
 }
 
@@ -131,10 +136,10 @@ DOCKER_APPGROUP=$DEFAULT_DOCKER_APPGROUP
 DOCKER_APPUID=$DEFAULT_DOCKER_APPUID
 DOCKER_APPGID=$DEFAULT_DOCKER_APPGID
 DOCKER_APPHOME=$DEFAULT_DOCKER_APPHOME
-DOCKER_CONTAINER_ARGS=("/bin/sh" "-c" "trap exit INT TERM; while true; do sleep 10000000; done")
-DOCKER_EXEC_ARGS=("/usr/local/bin/run-shell.sh")
-#DOCKER_EXEC_ARGS=("/bin/bash")
-DOCKER_BUILD_ARGS=()
+DOCKER_EXECARGS=("${DEFAULT_DOCKER_EXECARGS[@]}")
+DOCKER_RUNARGS=("${DEFAULT_DOCKER_RUNARGS[@]}")
+DOCKER_CONTAINERARGS=("${DEFAULT_DOCKER_CONTAINERARGS[@]}")
+DOCKER_BUILDARGS=("${DEFAULT_DOCKER_BUILDARGS[@]}")
 
 CONFIG_FILE=$THIS_DIR/config.ini
 
@@ -143,14 +148,6 @@ if [[ -e "$CONFIG_FILE" ]]; then
         eval "$SHELL_CONFIG"
     fi
 fi
-
-DOCKER_BUILD_ARGS+=(
-    --build-arg "APP_USER=$DOCKER_APPUSER"
-    --build-arg "APP_GROUP=$DOCKER_APPGROUP"
-    --build-arg "APP_UID=$DOCKER_APPUID"
-    --build-arg "APP_GID=$DOCKER_APPGID"
-    --build-arg "APP_HOME=$DOCKER_APPHOME"
-)
 
 VOLUME_DIR=$THIS_DIR
 HELP=
@@ -191,6 +188,14 @@ if is-true "$HELP"; then
     exit 0
 fi
 
+DOCKER_BUILDARGS+=(
+    --build-arg "APP_USER=$DOCKER_APPUSER"
+    --build-arg "APP_GROUP=$DOCKER_APPGROUP"
+    --build-arg "APP_UID=$DOCKER_APPUID"
+    --build-arg "APP_GID=$DOCKER_APPGID"
+    --build-arg "APP_HOME=$DOCKER_APPHOME"
+)
+
 if ! docker_output=$(docker info 2>&1); then
     fatal "Could not run 'docker info', aborting:
 ---
@@ -200,11 +205,11 @@ $docker_output
 fi
 
 if [[ "$COMMAND" = "build" ]]; then
-    build-docker-image "$DOCKER_IMAGENAME" "${DOCKER_BUILD_ARGS[@]}"
+    build-docker-image "$DOCKER_IMAGENAME" "${DOCKER_BUILDARGS[@]}"
     exit 0
 fi
 
-ensure-docker-image "$DOCKER_IMAGENAME" "${DOCKER_BUILD_ARGS[@]}"
+ensure-docker-image "$DOCKER_IMAGENAME" "${DOCKER_BUILDARGS[@]}"
 
 runningContainer=
 runningContainers=()
@@ -228,10 +233,15 @@ else
             "--env=APP_UID=$DOCKER_APPUID"
             "--env=APP_GID=$DOCKER_APPGID"
             "--env=APP_HOME=$DOCKER_APPHOME"
+        )
+        for dockerArg in "${DOCKER_RUNARGS[@]}"; do
+            dockerArgs+=("$dockerArg")
+        done
+        dockerArgs+=(
             "--detach"
             "$DOCKER_IMAGENAME"
         )
-        for dockerArg in "${DOCKER_CONTAINER_ARGS[@]}"; do
+        for dockerArg in "${DOCKER_CONTAINERARGS[@]}"; do
             dockerArgs+=("$dockerArg")
         done
         echo-verbose "docker run ${dockerArgs[*]}"
@@ -260,8 +270,8 @@ case "$COMMAND" in
         if [[ $# -eq 0 ]]; then
             message "Info: $VOLUME_DIR is mounted to $DOCKER_CONTAINERMOUNTDIR"
         fi
-        echo-verbose "docker exec -ti \"$runningContainer\" ${DOCKER_EXEC_ARGS[*]} $*"
-        docker exec -ti "$runningContainer" "${DOCKER_EXEC_ARGS[@]}" "$@"
+        echo-verbose "docker exec -ti \"$runningContainer\" ${DOCKER_EXECARGS[*]} $*"
+        docker exec -ti "$runningContainer" "${DOCKER_EXECARGS[@]}" "$@"
         ;;
     stop)
         if [[ -n "$runningContainer" ]]; then

@@ -12,7 +12,7 @@ THIS_DIR=$( (cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P))
 
 
 print-usage() {
-    echo "Usage: $1 [command] [<args>]
+    echo "Usage: $1 [<options-1>] [command] [<options-2>] [<command-args>]
 
 If no arguments provided /bin/sh is started in interactive mode.
 Storage is mounted to /mnt directory.
@@ -22,11 +22,15 @@ commands:
     stop                       Stop container
     exec                       Execute command in container, this command is used by default
     build                      Build container
+    install <directory>
+                               Install run-in-toolbox script to the specified directory
 
-options:
-    --help                 Display this help and exit
+options-1 and 2:
     -h, --help                 Display this help and exit
     -v, --verbose              Verbose output
+    -c, --config=CONFIG_FILE   Path to configuration file
+
+options-2:
     --                         End of options
 
 current user-defined configuration:
@@ -100,27 +104,18 @@ cleanup-container() {
 }
 
 cleanup-not-running-container() {
-    local name cid status
+    local name cid dockerResult status
     # Cleanup exited or dead containers
     name=$1
     for status in exited dead; do
-        while IFS='' read -r cid; do
-            cleanup-container "$cid"
-        done < <(docker ps --filter=name="$name" --filter=status="$status" --all --quiet)
+        while IFS=$'\t' read -r -a dockerResult; do
+            if [[ "${dockerResult[1]}" = "$name" ]]; then
+                cleanup-container "${dockerResult[0]}"
+            fi
+        done < <(docker ps --filter=status="$status" --no-trunc --all --format "{{.ID}}\t{{.Names}}")
+
     done
 }
-
-if [[ $# -gt 0 && "$1" != -* ]]; then
-    COMMAND=$1
-    shift
-else
-    COMMAND="exec"
-fi
-
-case "$COMMAND" in
-    start | stop | exec | build) ;;
-    *) fatal "$0: Unsupported command: $COMMAND" ;;
-esac
 
 is-command-require-container() {
     case "$1" in
@@ -144,23 +139,64 @@ DOCKER_BUILDARGS=("${DEFAULT_DOCKER_BUILDARGS[@]}")
 DOCKER_VOLUMEDIR=$DEFAULT_DOCKER_VOLUMEDIR
 
 CONFIG_FILE=$THIS_DIR/config.ini
-
-if [[ -e "$CONFIG_FILE" ]]; then
-    if SHELL_CONFIG=$(load-config "$CONFIG_FILE"); then
-        eval "$SHELL_CONFIG"
-    fi
-fi
-
 HELP=
 
+# options before command
 while [[ $# -gt 0 ]]; do
     case "$1" in
+    -c|--config)
+        CONFIG_FILE=$2
+        shift 2
+        ;;
+    --config=*)
+        CONFIG_FILE=${1#*=}
+        shift
+        ;;
     --help)
         HELP=true
         shift
         break
         ;;
-    -v | --verbose)
+    -v|--verbose)
+        VERBOSE=true
+        shift
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
+
+# command
+if [[ $# -gt 0 && "$1" != -* ]]; then
+    COMMAND=$1
+    shift
+else
+    COMMAND="exec"
+fi
+
+case "$COMMAND" in
+    start | stop | exec | build | install) ;;
+    *) fatal "$0: Unsupported command: $COMMAND" ;;
+esac
+
+# options after command
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -c|--config)
+        CONFIG_FILE=$2
+        shift 2
+        ;;
+    --config=*)
+        CONFIG_FILE=${1#*=}
+        shift
+        ;;
+    --help)
+        HELP=true
+        shift
+        break
+        ;;
+    -v|--verbose)
         VERBOSE=true
         shift
         ;;
@@ -177,6 +213,18 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [[ -e "$CONFIG_FILE" ]]; then
+    # update default volume directory
+    if [[ "$DOCKER_VOLUMEDIR" = "$DEFAULT_DOCKER_VOLUMEDIR" ]]; then
+        # if docker volume directory is not changed (e.g. by command line options)
+        # use directory of the config file
+        DOCKER_VOLUMEDIR=$(dirname -- "${CONFIG_FILE}")
+    fi
+    if SHELL_CONFIG=$(parse-config "$CONFIG_FILE"); then
+        eval "$SHELL_CONFIG"
+    fi
+fi
+
 if [[ "$DOCKER_APPUID" -eq 0 ]]; then
     DOCKER_APPUID=65535
 fi
@@ -186,6 +234,40 @@ fi
 
 if is-true "$HELP"; then
     print-usage "$0"
+    exit 0
+fi
+
+if [[ "$COMMAND" = "install" ]]; then
+    if [[ $# -ne 1 ]]; then
+        fatal "install command require destination directory argument"
+    fi
+    INSTALL_DIR=$1
+    shift
+
+    if [[ ! -d "$INSTALL_DIR" ]]; then
+        fatal "$INSTALL_DIR is not a directory"
+    fi
+
+    INSTALL_DIR=$(abspath "$INSTALL_DIR")
+    CONTAINER_NAME=$(basename -- "$INSTALL_DIR")
+    THIS_SCRIPT=$(abspath "${BASH_SOURCE[0]}")
+
+    echo "#!/bin/bash
+set -eou pipefail
+export LC_ALL=C
+unset CDPATH
+
+THIS_DIR=\$( (cd \"\$(dirname -- \"\${BASH_SOURCE[0]}\")\" && pwd -P))
+exec \"${THIS_SCRIPT}\" -c \"\$THIS_DIR/toolbox-config.ini\"  \"\${@}\"" > "$INSTALL_DIR/run-in-toolbox.sh"
+    chmod +x "$INSTALL_DIR/run-in-toolbox.sh"
+    if [[ ! -e "$INSTALL_DIR/toolbox-config.ini" ]]; then
+        echo "[docker]
+containerName=devenv-toolbox-$CONTAINER_NAME
+" > "$INSTALL_DIR/toolbox-config.ini"
+    else
+        echo-warning "Configuration file $INSTALL_DIR/toolbox-config.ini already exists !"
+    fi
+    message "Installed run-in-toolbox.sh script to the directory $INSTALL_DIR"
     exit 0
 fi
 
@@ -214,7 +296,11 @@ ensure-docker-image "$DOCKER_IMAGENAME" "${DOCKER_BUILDARGS[@]}"
 
 runningContainer=
 runningContainers=()
-while IFS='' read -r line; do runningContainers+=("$line"); done < <(docker ps --filter=name="$DOCKER_CONTAINERNAME" --filter=status=running --quiet)
+while IFS=$'\t' read -r -a dockerResult; do
+    if [[ "${dockerResult[1]}" = "$DOCKER_CONTAINERNAME" ]]; then
+        runningContainers+=("${dockerResult[0]}")
+    fi
+done < <(docker ps  --filter=status=running --no-trunc --format "{{.ID}}\t{{.Names}}")
 
 if [[ ${#runningContainers[@]} -ge 1 ]]; then
     if [[ ${#runningContainers[@]} -gt 1 ]]; then

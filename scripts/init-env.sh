@@ -31,7 +31,7 @@ init-python-3() {
     fi
 }
 
-load-config() {
+parse-config() {
     if [[ -z "${PY-}" ]]; then
         if ! init-python-3; then
             error "Could not find Python 3 interpreter, configuration cannot be loaded from file $1"

@@ -43,6 +43,7 @@ docker.execArgs = $(printf-array "${DOCKER_EXECARGS[@]}")
 docker.runArgs = $(printf-array "${DOCKER_RUNARGS[@]}")
 docker.containerArgs = $(printf-array "${DOCKER_CONTAINERARGS[@]}")
 docker.buildArgs = $(printf-array "${DOCKER_BUILDARGS[@]}")
+docker.volumeDir = $DOCKER_VOLUMEDIR
 "
 }
 
@@ -140,6 +141,7 @@ DOCKER_EXECARGS=("${DEFAULT_DOCKER_EXECARGS[@]}")
 DOCKER_RUNARGS=("${DEFAULT_DOCKER_RUNARGS[@]}")
 DOCKER_CONTAINERARGS=("${DEFAULT_DOCKER_CONTAINERARGS[@]}")
 DOCKER_BUILDARGS=("${DEFAULT_DOCKER_BUILDARGS[@]}")
+DOCKER_VOLUMEDIR=$DEFAULT_DOCKER_VOLUMEDIR
 
 CONFIG_FILE=$THIS_DIR/config.ini
 
@@ -149,7 +151,6 @@ if [[ -e "$CONFIG_FILE" ]]; then
     fi
 fi
 
-VOLUME_DIR=$THIS_DIR
 HELP=
 
 while [[ $# -gt 0 ]]; do
@@ -227,7 +228,7 @@ else
         # Start new container
         dockerArgs=(
             "--name=$DOCKER_CONTAINERNAME"
-            "--volume=$VOLUME_DIR:$DOCKER_CONTAINERMOUNTDIR:Z"
+            "--volume=$DOCKER_VOLUMEDIR:$DOCKER_CONTAINERMOUNTDIR:Z"
             "--env=APP_USER=$DOCKER_APPUSER"
             "--env=APP_GROUP=$DOCKER_APPGROUP"
             "--env=APP_UID=$DOCKER_APPUID"
@@ -268,7 +269,7 @@ fi
 case "$COMMAND" in
     exec)
         if [[ $# -eq 0 ]]; then
-            message "Info: $VOLUME_DIR is mounted to $DOCKER_CONTAINERMOUNTDIR"
+            message "Info: $DOCKER_VOLUMEDIR is mounted to $DOCKER_CONTAINERMOUNTDIR"
         fi
         echo-verbose "docker exec -ti \"$runningContainer\" ${DOCKER_EXECARGS[*]} $*"
         docker exec -ti "$runningContainer" "${DOCKER_EXECARGS[@]}" "$@"

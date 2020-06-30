@@ -215,6 +215,8 @@ DEFAULT_DOCKER_RUNARGS=()
 DEFAULT_DOCKER_CONTAINERARGS=("/bin/sh" "-c" "trap exit INT TERM; while true; do sleep 10000000; done")
 # shellcheck disable=SC2034
 DEFAULT_DOCKER_BUILDARGS=()
+# shellcheck disable=SC2034
+DEFAULT_DOCKER_VOLUMEDIR=$ROOT_DIR
 
 # Load configuration
 # load-script "$ROOT_DIR/settings.cfg"

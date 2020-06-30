@@ -1,0 +1,6 @@
+# Ensure shell script uses LF.
+Dockerfile          eol=lf
+*.sh                eol=lf
+docker-files/*.sh   eol=lf
+docker-files/*.txt  eol=lf
+docker-files/*.c    eol=lf

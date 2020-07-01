@@ -100,22 +100,22 @@ cleanup-container() {
 }
 
 cleanup-not-running-container() {
-    local name cid dockerResult status
+    local name dockerResult status
     # Cleanup exited or dead containers
     name=$1
-    for status in exited dead; do
+    for status in exited dead created; do
         while IFS=$'\t' read -r -a dockerResult; do
             if [[ "${dockerResult[1]}" = "$name" ]]; then
                 cleanup-container "${dockerResult[0]}"
             fi
         done < <(docker ps --filter=status="$status" --no-trunc --all --format "{{.ID}}\t{{.Names}}")
-
     done
+    echo-verbose "Finished cleanup for container $name"
 }
 
 is-command-require-container() {
     case "$1" in
-        start | exec | logs) return 0 ;;
+        start | exec) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -351,11 +351,16 @@ case "$COMMAND" in
         if [[ -n "$runningContainer" ]]; then
             cleanup-container "$runningContainer"
         fi
+        cleanup-not-running-container "$DOCKER_CONTAINERNAME"
         ;;
     start)
         # Container already started
         ;;
     logs)
-        docker logs "$runningContainer" "$@"
+        if [[ -n "$runningContainer" ]]; then
+            docker logs "$runningContainer" "$@"
+        else
+            echo-warning "No running container $DOCKER_CONTAINERNAME"
+        fi
         ;;
 esac

@@ -21,6 +21,7 @@ commands:
     start                      Start container
     stop                       Stop container
     exec                       Execute command in container, this command is used by default
+    logs                       Output container logs
     build                      Build container
     install <directory>
                                Install run-in-toolbox script to the specified directory
@@ -114,11 +115,10 @@ cleanup-not-running-container() {
 
 is-command-require-container() {
     case "$1" in
-        start | exec) return 0 ;;
+        start | exec | logs) return 0 ;;
         *) return 1 ;;
     esac
 }
-
 
 CONFIG_FILE=$THIS_DIR/toolbox-config.ini
 HELP=
@@ -158,7 +158,7 @@ else
 fi
 
 case "$COMMAND" in
-    start | stop | exec | build | install) ;;
+    start | stop | exec | logs | build | install) ;;
     *) fatal "$0: Unsupported command: $COMMAND" ;;
 esac
 
@@ -281,8 +281,9 @@ runningContainers=()
 while IFS=$'\t' read -r -a dockerResult; do
     if [[ "${dockerResult[1]}" = "$DOCKER_CONTAINERNAME" ]]; then
         runningContainers+=("${dockerResult[0]}")
+        echo-verbose "Running container with name ${dockerResult[1]} and ID ${dockerResult[0]}"
     fi
-done < <(docker ps  --filter=status=running --no-trunc --format "{{.ID}}\t{{.Names}}")
+done < <(docker ps --filter=status=running --no-trunc --format "{{.ID}}\t{{.Names}}")
 
 if [[ ${#runningContainers[@]} -ge 1 ]]; then
     if [[ ${#runningContainers[@]} -gt 1 ]]; then
@@ -323,10 +324,14 @@ else
             error "Could not run docker container: docker run ${dockerArgs[*]}"
             fatal "Failed to run container with image $DOCKER_IMAGENAME, error code: $exit_code"
         fi
+
         runningContainers=()
-        while IFS='' read -r cid; do
-            runningContainers+=("$cid");
-        done < <(docker ps --filter=name="$DOCKER_CONTAINERNAME" --filter=status=running --quiet)
+        while IFS=$'\t' read -r -a dockerResult; do
+            if [[ "${dockerResult[1]}" = "$DOCKER_CONTAINERNAME" ]]; then
+                runningContainers+=("${dockerResult[0]}")
+                echo-verbose "Running container with name ${dockerResult[1]} and ID ${dockerResult[0]}"
+            fi
+        done < <(docker ps --filter=status=running --no-trunc --format "{{.ID}}\t{{.Names}}")
         if [[ ${#runningContainers[@]} -eq 0 ]]; then
             fatal "Could not find running container $DOCKER_IMAGENAME"
         fi
@@ -349,5 +354,8 @@ case "$COMMAND" in
         ;;
     start)
         # Container already started
+        ;;
+    logs)
+        docker logs "$runningContainer" "$@"
         ;;
 esac

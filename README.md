@@ -43,17 +43,19 @@ docker.volumeDir = /home/rubinste/Kubernetes/devenv-toolbox
 docker.file = Dockerfile
 ```
 
-## Use tensorflow-2.2.0-gpu-jupyter image
+## Use tensorflow-2.2.0-jupyter / tensorflow-2.2.0-gpu-jupyter image
 
-You will need nvidia-docker2 installed:
+If you want to use Tensorflow with GPU you must have nvidia-docker2 installed:
 https://github.com/NVIDIA/nvidia-docker/wiki/Installation-(version-2.0)
 
 ```
 # Install Toolbox script into the new directory
 mkdir tensorflow-test
 ./run-in-toolbox.sh install tensorflow-test
-# Copy configuration file
+# Copy configuration file for GPU
 cp config-examples/tensorflow-2.2.0-gpu-jupyter.ini tensorflow-test/toolbox-config.ini
+# Or copy configuration file for CPU
+cp config-examples/tensorflow-2.2.0-jupyter.ini tensorflow-test/toolbox-config.ini
 # Build toolbox image
 cd tensorflow-test
 ./run-in-toolbox.sh build
@@ -61,4 +63,7 @@ cd tensorflow-test
 ./run-in-toolbox.sh start
 # Grep Docker container protocols to find the URI of the Jupyter notebook server
 ./run-in-toolbox.sh logs 2>&1 | grep 'http://127.0.0.1:8888'
+# To get to the container shell, use
+./run-in-toolbox.sh
+# You can install new software with sudo apt-get install
 ```

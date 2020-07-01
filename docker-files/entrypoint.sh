@@ -126,17 +126,17 @@ fi
 # Fix permissions for /tmp directory
 chmod 0777 /tmp
 
-if [[ -n "$APP_USER" ]] && command -v setfacl &> /dev/null; then
-    # Workaround for Ubuntu Bug
-    # https://bugs.launchpad.net/ubuntu/+source/xinit/+bug/1562219
-    setfacl -m "u:$APP_USER:rw" /dev/tty*
-fi
-
 groupadd -o -g "$APP_GID" "$APP_GROUP" &>/dev/null ||
 groupmod -o -g "$APP_GID" "$APP_GROUP" &>/dev/null || : ;
 useradd -o -u "$APP_UID" -g "$APP_GROUP" -s "$SHELL" -d "$APP_HOME" "$APP_USER" &>/dev/null ||
 usermod -o -u "$APP_UID" -g "$APP_GROUP" -s "$SHELL" -d "$APP_HOME" "$APP_USER" &>/dev/null || : ;
 #mkhomedir_helper "$APP_USER"
+
+if [[ -n "$APP_USER" ]] && command -v setfacl &> /dev/null; then
+    # Workaround for Ubuntu Bug
+    # https://bugs.launchpad.net/ubuntu/+source/xinit/+bug/1562219
+    setfacl -m "u:$APP_USER:rw" /dev/tty*
+fi
 
 printf \
     "APP_GROUP=%q\nAPP_USER=%q\nAPP_HOME=%q\nAPP_UID=%q\nAPP_GID=%q\n" \

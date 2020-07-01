@@ -34,33 +34,28 @@ options-2:
     --                         End of options
 
 current user-defined configuration:
-
-docker.imageName = $DOCKER_IMAGENAME
-docker.containerName = $DOCKER_CONTAINERNAME
-docker.containerMountDir = $DOCKER_CONTAINERMOUNTDIR
-docker.appUser = $DOCKER_APPUSER
-docker.appGroup = $DOCKER_APPGROUP
-docker.appUid = $DOCKER_APPUID
-docker.appGid = $DOCKER_APPGID
-docker.appHome = $DOCKER_APPHOME
-docker.execArgs = $(printf-array "${DOCKER_EXECARGS[@]}")
-docker.runArgs = $(printf-array "${DOCKER_RUNARGS[@]}")
-docker.containerArgs = $(printf-array "${DOCKER_CONTAINERARGS[@]}")
-docker.buildArgs = $(printf-array "${DOCKER_BUILDARGS[@]}")
-docker.volumeDir = $DOCKER_VOLUMEDIR
 "
+    print-config
+    echo ""
 }
 
 build-docker-image() {
-    local name exit_code
+    local name docker_fn exit_code
     name=$1
     shift
+    if [[ "$DOCKER_FILE" = /* ]]; then
+        docker_fn=$DOCKER_FILE
+    else
+        docker_fn=$ROOT_DIR/$DOCKER_FILE
+    fi
     set +e
     (
         set -x
         docker build \
             "$@" \
-            -t "$name" "$ROOT_DIR"
+            -t "$name" \
+            -f "$docker_fn" \
+            "$ROOT_DIR"
     )
     exit_code=$?
     set -e
@@ -124,19 +119,6 @@ is-command-require-container() {
     esac
 }
 
-DOCKER_IMAGENAME=$DEFAULT_DOCKER_IMAGENAME
-DOCKER_CONTAINERNAME=$DEFAULT_DOCKER_CONTAINERNAME
-DOCKER_CONTAINERMOUNTDIR=$DEFAULT_DOCKER_CONTAINERMOUNTDIR
-DOCKER_APPUSER=$DEFAULT_DOCKER_APPUSER
-DOCKER_APPGROUP=$DEFAULT_DOCKER_APPGROUP
-DOCKER_APPUID=$DEFAULT_DOCKER_APPUID
-DOCKER_APPGID=$DEFAULT_DOCKER_APPGID
-DOCKER_APPHOME=$DEFAULT_DOCKER_APPHOME
-DOCKER_EXECARGS=("${DEFAULT_DOCKER_EXECARGS[@]}")
-DOCKER_RUNARGS=("${DEFAULT_DOCKER_RUNARGS[@]}")
-DOCKER_CONTAINERARGS=("${DEFAULT_DOCKER_CONTAINERARGS[@]}")
-DOCKER_BUILDARGS=("${DEFAULT_DOCKER_BUILDARGS[@]}")
-DOCKER_VOLUMEDIR=$DEFAULT_DOCKER_VOLUMEDIR
 
 CONFIG_FILE=$THIS_DIR/config.ini
 HELP=

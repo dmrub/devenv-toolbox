@@ -191,7 +191,6 @@ test-docker-image() {
 
 # Set defaults
 
-# shellcheck disable=SC2034
 DEFAULT_DOCKER_IMAGENAME=devenv-toolbox
 # shellcheck disable=SC2034
 DEFAULT_DOCKER_CONTAINERNAME=devenv-toolbox
@@ -217,6 +216,54 @@ DEFAULT_DOCKER_CONTAINERARGS=("/bin/sh" "-c" "trap exit INT TERM; while true; do
 DEFAULT_DOCKER_BUILDARGS=()
 # shellcheck disable=SC2034
 DEFAULT_DOCKER_VOLUMEDIR=$ROOT_DIR
+# shellcheck disable=SC2034
+DEFAULT_DOCKER_FILE=Dockerfile
+
+# Define configuration variables with defauts
+# shellcheck disable=SC2034
+DOCKER_IMAGENAME=$DEFAULT_DOCKER_IMAGENAME
+# shellcheck disable=SC2034
+DOCKER_CONTAINERNAME=$DEFAULT_DOCKER_CONTAINERNAME
+# shellcheck disable=SC2034
+DOCKER_CONTAINERMOUNTDIR=$DEFAULT_DOCKER_CONTAINERMOUNTDIR
+# shellcheck disable=SC2034
+DOCKER_APPUSER=$DEFAULT_DOCKER_APPUSER
+# shellcheck disable=SC2034
+DOCKER_APPGROUP=$DEFAULT_DOCKER_APPGROUP
+# shellcheck disable=SC2034
+DOCKER_APPUID=$DEFAULT_DOCKER_APPUID
+# shellcheck disable=SC2034
+DOCKER_APPGID=$DEFAULT_DOCKER_APPGID
+# shellcheck disable=SC2034
+DOCKER_APPHOME=$DEFAULT_DOCKER_APPHOME
+# shellcheck disable=SC2034
+DOCKER_EXECARGS=("${DEFAULT_DOCKER_EXECARGS[@]}")
+# shellcheck disable=SC2034
+DOCKER_RUNARGS=("${DEFAULT_DOCKER_RUNARGS[@]}")
+# shellcheck disable=SC2034
+DOCKER_CONTAINERARGS=("${DEFAULT_DOCKER_CONTAINERARGS[@]}")
+# shellcheck disable=SC2034
+DOCKER_BUILDARGS=("${DEFAULT_DOCKER_BUILDARGS[@]}")
+# shellcheck disable=SC2034
+DOCKER_VOLUMEDIR=$DEFAULT_DOCKER_VOLUMEDIR
+# shellcheck disable=SC2034
+DOCKER_FILE=$DEFAULT_DOCKER_FILE
 
 # Load configuration
 # load-script "$ROOT_DIR/settings.cfg"
+print-config() {
+    echo "docker.imageName = $DOCKER_IMAGENAME
+docker.containerName = $DOCKER_CONTAINERNAME
+docker.containerMountDir = $DOCKER_CONTAINERMOUNTDIR
+docker.appUser = $DOCKER_APPUSER
+docker.appGroup = $DOCKER_APPGROUP
+docker.appUid = $DOCKER_APPUID
+docker.appGid = $DOCKER_APPGID
+docker.appHome = $DOCKER_APPHOME
+docker.execArgs = $(printf-array "${DOCKER_EXECARGS[@]}")
+docker.runArgs = $(printf-array "${DOCKER_RUNARGS[@]}")
+docker.containerArgs = $(printf-array "${DOCKER_CONTAINERARGS[@]}")
+docker.buildArgs = $(printf-array "${DOCKER_BUILDARGS[@]}")
+docker.volumeDir = $DOCKER_VOLUMEDIR
+docker.file = $DOCKER_FILE"
+}

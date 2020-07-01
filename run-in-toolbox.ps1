@@ -126,7 +126,7 @@ function Main {
     $dockerAppUid = $config.docker.appUid
     $dockerAppGid = $config.docker.appGid
     $dockerAppHome = $config.docker.appHome
-    $dockerContainerArgs = @("/bin/sh", "-c", "trap exit INT TERM; while true; do sleep 10000000; done")
+    $dockerContainerArgs = @( )
     $dockerBuildArgs = @("--build-arg", "APP_USER=$dockerAppUser",
                          "--build-arg", "APP_GROUP=$dockerAppGroup",
                          "--build-arg", "APP_UID=$dockerAppUid",

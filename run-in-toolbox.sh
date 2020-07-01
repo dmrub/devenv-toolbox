@@ -120,7 +120,7 @@ is-command-require-container() {
 }
 
 
-CONFIG_FILE=$THIS_DIR/config.ini
+CONFIG_FILE=$THIS_DIR/toolbox-config.ini
 HELP=
 
 # options before command

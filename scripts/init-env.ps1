@@ -13,7 +13,7 @@ if (!(Test-Path Variable:PSScriptRoot)) { $PSScriptRoot = Split-Path -Parent $My
 # Write-Output "Done"
 
 $rootDir = Resolve-FullPath (Join-Path $PSScriptRoot "..")
-$configFile = Join-Path $rootDir "config.ini"
+$configFile = Join-Path $rootDir "toolbox-config.ini"
 
 $default_docker_imageName = "devenv-toolbox"
 $default_docker_containerName = "devenv-toolbox"

@@ -60,6 +60,7 @@ COPY --from=build /usr/local/bin/su-entrypoint /usr/local/bin/su-exec /usr/local
 RUN set -eux; \
     pypkg='python3 python3-pip'; \
     dnf update -y; \
+    if [ -e /etc/redhat-release ] && [ ! -e /etc/fedora-release ]; then dnf install epel-release -y; fi; \
     dnf install -y \
         openssl-devel openssh-clients sshpass curl gnupg2 \
         ca-certificates ${pypkg} rsync bash git curl sudo \

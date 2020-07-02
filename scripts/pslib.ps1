@@ -457,10 +457,12 @@ function getopt($argv, $shortopts, $longopts) {
         if ($arg -is [decimal]) { $rem += $arg; continue }
 
         if ($end_of_args) {
-             $rem += $arg
-        } elseif ($arg -eq '--' -or $arg -eq '---') {
+            $rem += $arg
+        }
+        elseif ($arg -eq '--' -or $arg -eq '---') {
             $end_of_args = $true
-        } elseif ($arg.startswith('--')) {
+        }
+        elseif ($arg.startswith('--')) {
             $name = $arg.substring(2)
 
             $longopt = $longopts | Where-Object { $_ -match "^$name=?$" }
@@ -679,6 +681,7 @@ Function Get-IniContent {
                 $section = $matches[1]
                 $ini[$section] = @{ }
                 $CommentCount = 0
+                continue;
             }
             "^(;.*)$" {
                 # Comment
@@ -690,6 +693,8 @@ Function Get-IniContent {
                 $CommentCount = $CommentCount + 1
                 $name = "Comment" + $CommentCount
                 $ini[$section][$name] = $value
+                #Write-Error "COMMENT $name $value"
+                continue;
             }
             "(.+?)\s*=\s*(.*)" {
                 # Key
@@ -698,7 +703,12 @@ Function Get-IniContent {
                     $ini[$section] = @{ }
                 }
                 $name, $value = $matches[1..2]
+                $trimmedValue = $value.Trim()
+                if ($trimmedValue.startswith("[") -or $trimmedValue.startswith('"')) {
+                    $value = ConvertFrom-Json $value -NoEnumerate
+                }
                 $ini[$section][$name] = $value
+                continue;
             }
         }
         Write-Verbose "$($MyInvocation.MyCommand.Name):: Finished Processing file: $FilePath"
@@ -825,22 +835,29 @@ Function Out-IniFile {
             if (!($($InputObject[$i].GetType().Name) -eq "Hashtable")) {
                 #No Sections
                 Write-Verbose "$($MyInvocation.MyCommand.Name):: Writing key: $i"
-                Add-Content -Path $outFile -Value "$i=$($InputObject[$i])" -Encoding $Encoding
+                $value = $InputObject[$i]
+                if (! ($value -is [string]) ) {
+                    $value = ConvertTo-Json $value -Compress
+                }
+                Add-Content -Path $outFile -Value "$i=$value" -Encoding $Encoding
             }
             else {
                 #Sections
                 Write-Verbose "$($MyInvocation.MyCommand.Name):: Writing Section: [$i]"
                 Add-Content -Path $outFile -Value "[$i]" -Encoding $Encoding
                 Foreach ($j in $($InputObject[$i].keys | Sort-Object)) {
+                    $value = $InputObject[$i][$j]
+                    if (! ($value -is [string]) ) {
+                        $value = ConvertTo-Json $value -Compress
+                    }
                     if ($j -match "^Comment[\d]+") {
                         Write-Verbose "$($MyInvocation.MyCommand.Name):: Writing comment: $j"
-                        Add-Content -Path $outFile -Value "$($InputObject[$i][$j])" -Encoding $Encoding
+                        Add-Content -Path $outFile -Value "$value" -Encoding $Encoding
                     }
                     else {
                         Write-Verbose "$($MyInvocation.MyCommand.Name):: Writing key: $j"
-                        Add-Content -Path $outFile -Value "$j=$($InputObject[$i][$j])" -Encoding $Encoding
+                        Add-Content -Path $outFile -Value "$j=$value" -Encoding $Encoding
                     }
-
                 }
                 Add-Content -Path $outFile -Value "" -Encoding $Encoding
             }
@@ -851,6 +868,56 @@ Function Out-IniFile {
 
     End
     { Write-Verbose "$($MyInvocation.MyCommand.Name):: Function ended" }
+}
+
+function local:ConfigValue($section, $key, $value) {
+    if (! ($value -is [string])) {
+        $value = ConvertTo-Json $value -Compress
+    }
+    "{0}.{1} = {2}`n" -f ($section, $key, $value)
+}
+
+function ConfigAsString {
+    [CmdletBinding()]
+    param (
+        [Parameter(
+            Mandatory = $true,
+            Position = 0,
+            ValueFromPipeline = $true)]
+        [hashtable] $Config,
+
+        [Parameter(Mandatory = $false)]
+        [string[]]
+        $FilterKeys
+    )
+    $result = ""
+
+
+    if ($FilterKeys -and $FilterKeys.Count -gt 0) {
+        foreach ($key in $FilterKeys) {
+            $keyParts = $key -split '.', 2, "simplematch"
+            if ($keyParts.Count -ne 2) {
+                Write-Error "Filter configuration key $($kv.Name) is not in format <SECTION>.<KEY>" -ErrorAction Stop
+            }
+            if ($Config.ContainsKey($keyParts[0])) {
+                $sectionDict = $Config[$keyParts[0]]
+                if ($sectionDict.ContainsKey($keyParts[1])) {
+                    $result += ConfigValue $keyParts[0] $keyParts[1] $sectionDict[$keyParts[1]]
+                }
+            }
+        }
+    }
+    else {
+        foreach ($kv in $Config.GetEnumerator()) {
+            $section = $kv.Key
+            $sectionDict = $kv.Value
+            foreach ($sectionKV in $sectionDict.GetEnumerator()) {
+                $result += ConfigValue $section $sectionKV.Key $sectionKV.Value
+            }
+        }
+    }
+
+    $result
 }
 
 $modulesDir = (Join-Path $PSScriptRoot "PsModules")

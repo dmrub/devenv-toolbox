@@ -154,17 +154,9 @@ options:
       -v, --verbose              Verbose output
       --, ---                    End of options (--- is reserved for Powershell before 6)
 
-current configuration:
-
-docker.imageName = $dockerImageName
-docker.containerName = $dockerContainerName
-docker.containerMountDir = $dockerContainerMountDir
-docker.appUser = $dockerAppUser
-docker.appGroup = $dockerAppGroup
-docker.appUid = $dockerAppUid
-docker.appGid = $dockerAppGid
-docker.appHome = $dockerAppHome
+current user-defined configuration:
 "
+        ConfigAsString $config -FilterKeys $configVars.Keys | Write-Output
         exit 0
     }
 

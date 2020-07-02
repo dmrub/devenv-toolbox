@@ -109,7 +109,9 @@ info "APP_USER=$APP_USER"
 info "APP_GROUP=$APP_GROUP"
 info "APP_UID=$APP_UID"
 info "APP_GID=$APP_GID"
-info "APP_CONFIG=(${APP_CONFIG[*]})"
+# '+' in ${APP_CONFIG[*]+} is required:
+# https://stackoverflow.com/questions/7577052/bash-empty-array-expansion-with-set-u
+info "APP_CONFIG=(${APP_CONFIG[*]+})"
 info "ENTRYPOINT_CONFIG=$ENTRYPOINT_CONFIG"
 
 for ((i = 0; i < ${#APP_CONFIG[@]}; i++)); do

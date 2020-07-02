@@ -15,7 +15,7 @@ print-usage() {
     echo "Usage: $1 [<options-1>] [command] [<options-2>] [<command-args>]
 
 If no arguments provided /bin/sh is started in interactive mode.
-Storage is mounted to /mnt directory.
+Storage is mounted to docker.containerMountDir = ${DOCKER_CONTAINERMOUNTDIR-} directory.
 
 commands:
     start                      Start container

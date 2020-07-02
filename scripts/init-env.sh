@@ -57,6 +57,11 @@ is-true() {
     return 1
 }
 
+is-array() {
+    [[ "$(declare -p "$1")" =~ "declare -a" ]]
+}
+
+
 message() {
     echo >&2 "$*"
 }
@@ -118,6 +123,14 @@ printf-array() {
         fi
     done
     printf "( %s )" "$r"
+}
+
+printf-var() {
+    if is-array "$1"; then
+        eval "printf-array \"\${$1[@]+\"\${$1[@]}\"}\""
+    else
+        eval "printf %s \"\${$1-}\""
+    fi
 }
 
 
@@ -189,81 +202,46 @@ test-docker-image() {
     fi
 }
 
-# Set defaults
+CONFIG_VARS=(
+    docker.imageName "devenv-toolbox"
+    docker.containerName "devenv-toolbox"
+    docker.containerMountDir "/mnt"
+    docker.appUid "$(id -u)"
+    docker.appGid "$(id -g)"
+    docker.appUser "toolbox"
+    docker.appGroup "toolbox"
+    docker.appHome "/mnt"
+    docker.execArgs '("/usr/local/bin/run-shell.sh")'
+    docker.runArgs '()'
+    docker.containerArgs '()'
+    docker.buildArgs '()'
+    docker.volumeDir "$ROOT_DIR"
+    docker.file "Dockerfile"
+)
 
-DEFAULT_DOCKER_IMAGENAME=devenv-toolbox
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_CONTAINERNAME=devenv-toolbox
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_CONTAINERMOUNTDIR=/mnt
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_APPUID=$(id -u)
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_APPGID=$(id -g)
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_APPGROUP=toolbox
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_APPUSER=toolbox
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_APPHOME=/mnt
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_EXECARGS=("/usr/local/bin/run-shell.sh")
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_RUNARGS=()
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_CONTAINERARGS=()
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_BUILDARGS=()
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_VOLUMEDIR=$ROOT_DIR
-# shellcheck disable=SC2034
-DEFAULT_DOCKER_FILE=Dockerfile
 
-# Define configuration variables with defauts
-# shellcheck disable=SC2034
-DOCKER_IMAGENAME=$DEFAULT_DOCKER_IMAGENAME
-# shellcheck disable=SC2034
-DOCKER_CONTAINERNAME=$DEFAULT_DOCKER_CONTAINERNAME
-# shellcheck disable=SC2034
-DOCKER_CONTAINERMOUNTDIR=$DEFAULT_DOCKER_CONTAINERMOUNTDIR
-# shellcheck disable=SC2034
-DOCKER_APPUSER=$DEFAULT_DOCKER_APPUSER
-# shellcheck disable=SC2034
-DOCKER_APPGROUP=$DEFAULT_DOCKER_APPGROUP
-# shellcheck disable=SC2034
-DOCKER_APPUID=$DEFAULT_DOCKER_APPUID
-# shellcheck disable=SC2034
-DOCKER_APPGID=$DEFAULT_DOCKER_APPGID
-# shellcheck disable=SC2034
-DOCKER_APPHOME=$DEFAULT_DOCKER_APPHOME
-# shellcheck disable=SC2034
-DOCKER_EXECARGS=("${DEFAULT_DOCKER_EXECARGS[@]}")
-# shellcheck disable=SC2034
-DOCKER_RUNARGS=("${DEFAULT_DOCKER_RUNARGS[@]}")
-# shellcheck disable=SC2034
-DOCKER_CONTAINERARGS=("${DEFAULT_DOCKER_CONTAINERARGS[@]}")
-# shellcheck disable=SC2034
-DOCKER_BUILDARGS=("${DEFAULT_DOCKER_BUILDARGS[@]}")
-# shellcheck disable=SC2034
-DOCKER_VOLUMEDIR=$DEFAULT_DOCKER_VOLUMEDIR
-# shellcheck disable=SC2034
-DOCKER_FILE=$DEFAULT_DOCKER_FILE
+CV_PRINT_CONFIG=""
+CV_TMP=""
+for ((i = 0; i < ${#CONFIG_VARS[@]}; i+=2)); do
+    CV_NAME=${CONFIG_VARS[i]}
+    CV_SHELL_NAME=${CV_NAME^^}
+    CV_SHELL_NAME=${CV_SHELL_NAME//./_}
+    CV_DEFAULT_VALUE=${CONFIG_VARS[i+1]}
+    CV_SHELL=
+    # echo "set $CV_SHELL_NAME to $CV_DEFAULT_VALUE" # DEBUG
+    printf -v CV_SHELL "
+    DEFAULT_${CV_SHELL_NAME}=%s;
+    if is-array DEFAULT_${CV_SHELL_NAME}; then
+      ${CV_SHELL_NAME}=(\"\${DEFAULT_${CV_SHELL_NAME}[@]+\"\${DEFAULT_${CV_SHELL_NAME}[@]}\"}\");
+    else
+      ${CV_SHELL_NAME}=\$DEFAULT_${CV_SHELL_NAME};
+    fi;" \
+        "$CV_DEFAULT_VALUE"
+    eval "$CV_SHELL"
+    printf -v CV_TMP "%s = \$(printf-var %s)\n" "$CV_NAME" "$CV_SHELL_NAME"
+    CV_PRINT_CONFIG=${CV_PRINT_CONFIG}${CV_TMP}
+done
 
-# Load configuration
-# load-script "$ROOT_DIR/settings.cfg"
-print-config() {
-    echo "docker.imageName = $DOCKER_IMAGENAME
-docker.containerName = $DOCKER_CONTAINERNAME
-docker.containerMountDir = $DOCKER_CONTAINERMOUNTDIR
-docker.appUser = $DOCKER_APPUSER
-docker.appGroup = $DOCKER_APPGROUP
-docker.appUid = $DOCKER_APPUID
-docker.appGid = $DOCKER_APPGID
-docker.appHome = $DOCKER_APPHOME
-docker.execArgs = $(printf-array "${DOCKER_EXECARGS[@]}")
-docker.runArgs = $(printf-array "${DOCKER_RUNARGS[@]}")
-docker.containerArgs = $(printf-array "${DOCKER_CONTAINERARGS[@]}")
-docker.buildArgs = $(printf-array "${DOCKER_BUILDARGS[@]}")
-docker.volumeDir = $DOCKER_VOLUMEDIR
-docker.file = $DOCKER_FILE"
-}
+printf -v CV_PRINT_CONFIG "print-config() {\n  echo \"%s\";\n}\n" "$CV_PRINT_CONFIG"
+eval "$CV_PRINT_CONFIG"
+unset CV_PRINT_CONFIG CV_TMP CV_NAME CV_SHELL_NAME CV_SHELL

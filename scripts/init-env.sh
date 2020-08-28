@@ -58,7 +58,7 @@ is-true() {
 }
 
 is-array() {
-    [[ "$(declare -p "$1")" =~ "declare -a" ]]
+    declare -p "$1" &>/dev/null && [[ "$(declare -p "$1")" =~ "declare -a" ]]
 }
 
 

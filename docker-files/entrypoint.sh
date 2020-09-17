@@ -148,7 +148,10 @@ printf \
     "$APP_UID" \
     "$APP_GID" > /etc/toolbox-config.sh
 
-if ! grep -q "^${APP_USER}"; then
+if [[ ! -f /etc/sudoers ]] || ! grep -q "^${APP_USER}[[:space:]]" /etc/sudoers; then
+    if [[ ! -f /etc/sudoers ]]; then
+        touch /etc/sudoers
+    fi
     chmod 0660 /etc/sudoers;
     echo "${APP_USER} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers;
     chmod 0440 /etc/sudoers;

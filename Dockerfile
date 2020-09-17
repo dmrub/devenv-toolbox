@@ -111,4 +111,4 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
-CMD ["/bin/sh", "-c", "trap exit INT TERM; while true; do sleep 10000000; done"]
+CMD ["/bin/sh", "-c", "trap exit INT TERM; while true; do sleep 10; done"]

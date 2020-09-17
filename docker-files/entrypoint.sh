@@ -133,6 +133,10 @@ groupmod -o -g "$APP_GID" "$APP_GROUP" &>/dev/null || : ;
 useradd -o -u "$APP_UID" -g "$APP_GROUP" -s "$SHELL" -d "$APP_HOME" "$APP_USER" &>/dev/null ||
 usermod -o -u "$APP_UID" -g "$APP_GROUP" -s "$SHELL" -d "$APP_HOME" "$APP_USER" &>/dev/null || : ;
 #mkhomedir_helper "$APP_USER"
+if [[ -n "$APP_HOME" && ! -d "$APP_HOME" ]]; then
+    mkdir -p "$APP_HOME"
+    chown "$APP_UID:$APP_GID" -R "$APP_HOME"
+fi
 
 if [[ -n "$APP_USER" ]] && command -v setfacl &> /dev/null; then
     # Workaround for Ubuntu Bug
@@ -164,9 +168,10 @@ export TOOLBOX_INITIALIZED=true
 . /etc/toolbox-config.sh
 export HOME=\$APP_HOME
 export USER=\$APP_USER
-if [[ -n \"\$APP_HOME\" && -e \"\$APP_HOME\" ]]; then
-    if ! err=\$(ls -lA \"\$APP_HOME\" 2>&1 >/dev/null); then
-        echo >&2 \"
+if [[ -n \"\$APP_HOME\" ]]; then
+    if [[ -e \"\$APP_HOME\" ]]; then
+        if ! err=\$(ls -lA \"\$APP_HOME\" 2>&1 >/dev/null); then
+            echo >&2 \"
 -----------------------------------------------------------------------------
 Error accessing the directory \$APP_HOME:
 \$err
@@ -175,13 +180,21 @@ If you are using Docker for Windows please check if this directory is shared.
 See also: https://docs.docker.com/docker-for-windows/#file-sharing
 -----------------------------------------------------------------------------
 \"
+        fi
+    else
+        echo >&2 \"Error: directory \$APP_HOME does not exist !\"
+        exit 1
+    fi
+    if [[ -z \"\${1-}\" ]]; then
+        set -- \"\$SHELL\" -l
+        cd \"\$APP_HOME\"
     fi
 fi
-if [[ -z \"\${1-}\" ]]; then
-    set -- \"\$SHELL\" -l
-    cd \"\$APP_HOME\"
+if [[ \"\$(id -u)\" = \"\$(id -u \"\$APP_USER\")\" && \"\$(id -g)\" = \"\$(id -g \"\$APP_GROUP\")\" ]]; then
+    exec \"\$@\"
+else
+    exec su-exec \"\$APP_USER:\$APP_GROUP\" \"\$@\"
 fi
-exec su-exec \"\$APP_USER:\$APP_GROUP\" \"\$@\"
 " > /usr/local/bin/run-shell.sh
 chmod +x /usr/local/bin/run-shell.sh
 

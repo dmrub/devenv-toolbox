@@ -8,7 +8,7 @@ COPY docker-files/su-entrypoint.c \
 
 # build utilities
 RUN set -eux; \
-    if command -v dnv >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
+    if command -v dnf >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
     $dnf -y update; \
     buildDeps='gcc glibc-devel make'; \
     $dnf install -y $buildDeps; \
@@ -26,7 +26,7 @@ RUN set -eux; \
 # grab tini for signal processing and zombie killing
 ENV TINI_VERSION v0.19.0
 RUN set -eux; \
-    if command -v dnv >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
+    if command -v dnf >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
     $dnf -y update; \
     $dnf install -y wget ca-certificates gpg dirmngr; \
     \
@@ -60,7 +60,7 @@ COPY --from=build /usr/local/bin/su-entrypoint /usr/local/bin/su-exec /usr/local
 # Build toolbox
 
 RUN set -eux; \
-    if command -v dnv >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
+    if command -v dnf >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
     pypkg='python3 python3-pip'; \
     $dnf update -y; \
     if [ -e /etc/redhat-release ] && [ ! -e /etc/fedora-release ]; then $dnf install epel-release -y; fi; \
@@ -76,7 +76,7 @@ WORKDIR /app
 COPY docker-files/requirements.txt ./
 
 RUN set -eux; \
-    if command -v dnv >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
+    if command -v dnf >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
     PYTHON='python3'; \
     pypkg='python3-devel'; \
     ${PYTHON} -m pip install --upgrade pip; \
@@ -90,7 +90,7 @@ RUN set -eux; \
     $dnf remove -y gcc ${pypkg}; \
     $dnf clean all;
 
-RUN if command -v dnv >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
+RUN if command -v dnf >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
     $dnf update -y && $dnf install -y vim less
 
 # User configuration

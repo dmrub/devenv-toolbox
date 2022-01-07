@@ -8,7 +8,7 @@ COPY docker-files/su-entrypoint.c \
 
 # build utilities
 RUN set -eux; \
-    if command -v dnv >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
+    if command -v dnf >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
     $dnf -y update; \
     buildDeps='gcc glibc-devel make'; \
     $dnf install -y $buildDeps; \
@@ -26,7 +26,7 @@ RUN set -eux; \
 # grab tini for signal processing and zombie killing
 ENV TINI_VERSION v0.19.0
 RUN set -eux; \
-    if command -v dnv >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
+    if command -v dnf >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
     $dnf -y update; \
     $dnf install -y wget ca-certificates gpg dirmngr; \
     \
@@ -60,7 +60,7 @@ COPY --from=build /usr/local/bin/su-entrypoint /usr/local/bin/su-exec /usr/local
 # Build toolbox
 
 RUN set -eux; \
-    if command -v dnv >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
+    if command -v dnf >/dev/null 2>&1; then dnf=dnf; else dnf=yum; fi; \
     $dnf update -y; \
     $dnf install -y \
         sudo \
